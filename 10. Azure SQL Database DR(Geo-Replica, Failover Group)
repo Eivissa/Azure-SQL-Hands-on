@@ -1,0 +1,29 @@
+# 2.	지역 복제 구성 및 장애 조치 테스트
+$cre = (Get-Credential)
+
+# Add New Secondary Server  
+New-AzSqlServer -ServerName 서버명 -ResourceGroupName 리소스그룹명 -Location 지역 
+ -SqlAdministratorCredentials $cre 
+
+# Add Secondary Database 
+New-AzSqlDatabaseSecondary -ResourceGroupName 원본서버리소스그룹명 -ServerName 원본 서버명 -DatabaseName 데이터베이스명 -PartnerResourceGroupName 대상서버리소스그룹명 -PartnerServerName 대상서버명 -AllowConnections "All" 
+
+
+# Failover Test 
+Set-AzSqlDatabaseSecondary -ResourceGroupName 대상서버리소스그룹명 -ServerName 대상서버명 -DatabaseName 데이터베이스명 -PartnerResourceGroupName 원본서버리소스그룹명 -Failover
+
+Get-AzSqlDatabase -ResourceGroupName 리소스그룹명 -ServerName 서버명
+
+
+# 3.	Failover Group 테스트
+# 3.1.	https://docs.microsoft.com/ko-kr/azure/sql-database/sql-database-single-database-failover-group-tutorial
+# 3.2.	https://docs.microsoft.com/ko-kr/azure/sql-database/sql-database-auto-failover-group 
+# Add New Failover Group 
+New-AzSqlDatabaseFailoverGroup –ResourceGroupName 리소스그룹명 -ServerName 서버명 -PartnerServerName 대상서버명 –FailoverGroupName 장애조치그룹명 –FailoverPolicy Automatic 
+
+# Add Database to Failover Group
+Get-AzSqlDatabase -ResourceGroupName 리소스그룹명 -ServerName 서버명 -DatabaseName 데이터베이스명 | Add-AzSqlDatabaseToFailoverGroup -ResourceGroupName 리소스그룹명 -ServerName 서버명 -FailoverGroupName 장애조치그룹명
+
+# Group Failover Test
+Switch-AzSqlDatabaseFailoverGroup -ResourceGroupName 리소스그룹명 -ServerName 보조서버명 -FailoverGroupName 장애조치그룹명
+
