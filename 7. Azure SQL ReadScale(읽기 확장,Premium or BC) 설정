@@ -1,0 +1,5 @@
+	
+Get-AzSqlDatabase -ResourceGroupName 리소스그룹명 -ServerName 서버명 -DatabaseName 데이터베이스명 |select ServerName,DatabaseName,ReadScale 
+
+Set-AzSqlDatabase -ResourceGroupName 리소스그룹명 -ServerName 서버명 -DatabaseName 데이터베이스명 -ReadScale Enabled 
+
