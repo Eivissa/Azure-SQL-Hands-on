@@ -1,0 +1,72 @@
+# 1.	Automation 계정 생성
+New-AzAutomationAccount -Name Automation계정명 -Location 지역 -ResourceGroupName 리소스그룹명 
+
+
+# 2.	Automation Credential 생성
+$user = SQL_LOGIN_NAME
+$pw = ConvertTo-SecureString SQL_LOGIN_PASSWORD -AsPlainText -Force
+$cred = New-Object –TypeName System.Management.Automation.PSCredential –ArgumentList $user, $pw
+New-AzAutomationCredential -AutomationAccountName Automation계정명 -ResourceGroupName 리소스그룹명 -Name 자격증명이름 -Value $cred
+
+
+# 3.	Powershell Script 준비(automation_test.ps1로 저장)
+$myCredential = Get-AutomationPSCredential -Name 자격증명이름
+$userName = $myCredential.UserName
+$securePassword = $myCredential.Password
+$password = $myCredential.GetNetworkCredential().Password
+
+$SQLQuery= $("INSERT INTO test values (getdate());")
+
+$Connection = New-Object System.Data.SQLClient.SQLConnection
+$Connection.ConnectionString = "Server=tcp:서버명.database.windows.net,1433;Initial Catalog=데이터베이스명;Persist Security Info=False;User ID='$userName';Password='$password';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;"
+$Connection.Open()
+$Command = New-Object System.Data.SQLClient.SQLCommand
+$Command.Connection = $Connection
+$Command.CommandText = $SQLQuery
+
+$Command.ExecuteNonQuery()
+
+$Connection.Close()
+ 
+
+# 4.	Automation Powershell Runbook 생성 
+Import-AzAutomationRunbook -AutomationAccountName Automation계정명 -ResourceGroupName 리소스그룹명 -Type PowerShell 
+-Name Runbook명 -Path “C:\경로\automation_test.ps1"  
+
+
+# 6.	Automation Schedule 생성 
+
+# New-AzAutomationSchedule
+$StartTime = Get-Date 시작시간(예:”01:00:00”)
+$EndTime = $StartTime.AddYears(100)
+
+for ($i=0; $i -lt 60; $i + 1 ){
+$i = $i.ToString().PadLeft(2, '0')
+$schedulename = “스케쥴명”+$i
+
+New-AzAutomationSchedule -AutomationAccountName Automation계정명 -Name $schedulename -StartTime $StartTime -ExpiryTime $EndTime -HourInterval 1 -ResourceGroupName 리소스그룹명
+
+$StartTime = $StartTime.AddMinutes(1)
+$i = [int]$i
+$i = $i + 1
+}
+
+
+# 7.	Automation Powershell Runbook Published
+Publish-AzAutomationRunbook -AutomationAccountName Automation계정명 -Name Runbook명 -ResourceGroupName 리소스그룹명
+
+
+# 8.	Automation Runbook Schedule 등록
+# Register-AzAutomationScheduledRunbook
+for ($i=0; $i -lt 60; $i + 1 ){
+$i = $i.ToString().PadLeft(2, '0')
+$schedulename = “스케쥴명”+$i
+
+Register-AzAutomationScheduledRunbook -AutomationAccountName Automation계정명 -Name Runbook명 -ScheduleName $schedulename -ResourceGroupName 리소스그룹명
+
+$i = [int]$i
+$i = $i + 1
+} 
+
+
+
