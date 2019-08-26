@@ -1,0 +1,4 @@
+Get-AzLocation | Format-Table 
+
+# Add New Resource Group
+New-AzResourceGroup -Name 리소스그룹명 -Location 지역 
