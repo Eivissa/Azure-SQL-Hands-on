@@ -1,0 +1,99 @@
+# 1.2.	확장이벤트
+# 1.2.1.	Azure SQL Database vs On-premises SQL Server 확장이벤트 차이점
+# https://docs.microsoft.com/ko-kr/azure/sql-database/sql-database-xevent-db-diff-from-svr
+
+# 1.2.2.	Blob에 확장이벤트 파일 저장을 위한 구성
+# https://docs.microsoft.com/ko-kr/azure/sql-database/sql-database-xevent-code-event-file#powershell-code
+
+# 스토리지 생성에 필요한 변수 항목 입력
+
+$resourceGroupName      = 'YOUR_RESOURCE-GROUP-NAME';
+$storageAccountLocation = 'YOUR_STORAGE_ACCOUNT_LOCATION';
+$storageAccountName     = 'YOUR_STORAGE_ACCOUNT_NAME';
+$containerName          = 'YOUR_CONTAINER_NAME';
+$policySasToken         = 'TOKEN_NAME';
+
+# New Storage Account create
+
+New-AzStorageAccount -Name $storageAccountName -Location $storageAccountLocation -ResourceGroupName $resourceGroupName -SkuName 'Standard_LRS';
+
+$accessKey_ForStorageAccount = (Get-AzStorageAccountKey -Name $storageAccountName -ResourceGroupName $resourceGroupName).Value[0];
+
+
+# New Storage Account Context
+
+$context = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $accessKey_ForStorageAccount;
+
+
+# New Storage Container
+
+$containerObjectInStorageAccount = New-AzStorageContainer -Name $containerName -Context $context;
+
+$policySasExpiryTime = '2021-08-28T23:44:56Z';
+$policySasStartTime  = '2019-01-01';
+$policySasPermission = 'rwl';
+
+
+# New Storage Access Policy
+
+New-AzStorageContainerStoredAccessPolicy -Container $containerName -Context $context -Policy $policySasToken -Permission $policySasPermission -ExpiryTime $policySasExpiryTime -StartTime  $policySasStartTime;
+
+
+# New Storage SAS(shared access signatures) Token
+
+$sasTokenWithPolicy = New-AzStorageContainerSASToken -Name $containerName -Context $context -Policy  $policySasToken;
+
+"storageAccountName: $storageAccountName";
+"containerName:      $containerName";
+"sasTokenWithPolicy: $sasTokenWithPolicy";
+
+
+-- 1.2.3.	확장 이벤트 생성을 위한 Master Key 및 Credential 생성
+-- Test DB로 변경
+
+CREATE MASTER KEY ENCRYPTION BY PASSWORD = '0C34C960-6621-4682-A123-C7EA08E3FC46' -- Or any newid().
+
+CREATE DATABASE SCOPED CREDENTIAL[https://StorageAccountName.blob.core.windows.net/ContainerName]
+WITH IDENTITY = 'SHARED ACCESS SIGNATURE',  
+SECRET = 'sasTokenWithPolicy';
+
+
+-- 1.2.4.	에러 로그 수집 확장 이벤트 샘플  
+CREATE EVENT SESSION [XE_ERROR] ON DATABASE 
+ADD EVENT sqlserver.error_reported(
+ACTION(sqlserver.client_app_name,sqlserver.client_hostname,sqlserver.client_pid,sqlserver.database_name,sqlserver.session_id,sqlserver.sql_text,sqlserver.username)
+    WHERE ([error_number]<>(5701) AND [error_number]<>(5703) AND [error_number]<>(8625) AND [error_number]<>(8153) AND [error_number]<>(50000)))
+ADD TARGET package0.event_file(SET filename=N'https://StorageAccountName.blob.core.windows.net/ContainerName/error.xel',max_file_size=(100),max_rollover_files=(5)),
+ADD TARGET package0.ring_buffer(SET max_events_limit=(10000),max_memory=(10240),occurrence_number=(100))
+WITH (MAX_MEMORY=16384 KB,EVENT_RETENTION_MODE=ALLOW_SINGLE_EVENT_LOSS,MAX_DISPATCH_LATENCY=10 SECONDS,MAX_EVENT_SIZE=0 KB,MEMORY_PARTITION_MODE=PER_CPU,TRACK_CAUSALITY=OFF,STARTUP_STATE=ON);
+
+ALTER EVENT SESSION XE_ERROR ON DATABASE STATE = START;
+
+
+-- Blob Event File load
+
+SELECT *,CAST(event_data AS XML) AS [event_data_XML] 
+FROM sys.fn_xe_file_target_read_file
+('https://StorageAccountName.blob.core.windows.net/ContainerName/error', null, null, null);
+
+
+-- Ring_buffer Read
+
+SELECT
+         xe_file.value('(data[@name=''error_number'']/value)[1]', N'nvarchar(max)') AS error_number   
+        ,xe_file.value('(data[@name=''severity'']/value)[1]', N'nvarchar(max)') AS severity   
+		,xe_file.value('(data[@name=''message'']/value)[1]', N'nvarchar(max)') AS message   
+		,xe_file.value('(action[@name=''database_name'']/value)[1]', N'nvarchar(max)') AS database_name   
+		,xe_file.value('(action[@name=''username'']/value)[1]', N'nvarchar(max)') AS username   
+		,xe_file.value('(action[@name=''sql_text'']/value)[1]', N'nvarchar(max)') AS sql_text   
+		,XML_DATA
+FROM (
+SELECT se.name
+,CONVERT(xml,target_data) AS XML_DATA
+FROM sys.[dm_xe_database_sessions] se
+	JOIN sys.[dm_xe_database_session_targets] st
+		ON st.event_session_address = se.address
+WHERE name = 'XE_ERROR'
+AND target_name = 'ring_buffer'
+) statements
+CROSS APPLY XML_DATA.nodes ('//RingBufferTarget/event[@name="error_reported"]') AS a(xe_file)
