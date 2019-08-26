@@ -1,0 +1,23 @@
+# 1.	Login
+az login
+
+
+# 2.	Set subscription 
+az account show 
+
+az account list
+
+az account set --subscription "Microsoft Azure Internal Consumption"
+
+
+# 3.	Get resources 
+az resource list 
+
+az resource list `
+--query "reverse(sort_by([?contains(type, 'Sql')].{Name:name,Type:type},&Type))" `
+--output table
+
+
+# 4.	Log out
+az logout
+
