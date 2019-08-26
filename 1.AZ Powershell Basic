@@ -1,0 +1,25 @@
+# 1.	Login
+Connect-AzAccount 
+
+# 2.	Set subscription 
+Get-AzContext
+
+Get-AzSubscription
+
+Set-AzContext -subscription '2b6b4dbf-10b8-4f12-b3f6-1b9c7339f34b'
+(Select-AzSubscription -subscription '2b6b4dbf-10b8-4f12-b3f6-1b9c7339f34b')
+
+# 3.	Get resources 
+Get-AzResource
+
+Get-AzResource | Select-Object ResourceGroupName -Unique
+
+Get-AzResource | Select-Object name, ResourceType | 
+Where-Object {$_.ResourceType -like "*Microsoft.sql*"} | 
+Sort-Object ResourceType -Descending | Format-Table
+
+# 4.	Log out
+Logout-AzAccount
+
+
+ 
