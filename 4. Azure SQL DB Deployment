@@ -9,7 +9,7 @@ New-AzSqlServer -ServerName 서버명 -ResourceGroupName 리소스그룹명 -Loc
 # Add New SQL Database 
 New-AzSqlDatabase -DatabaseName 데이터베이스명 -CollationName Collation name(예: Korean_Wansung_CI_AS) `
 -ComputeGeneration Gen5 -ComputeModel Provisioned -Edition Standard -LicenseType LicenseIncluded `
--ResourceGroupName 리소스그룹명 -ServerName 서버명 -Tags @{service_type="live"} -VCore 2 -AsJob `
+-ResourceGroupName 리소스그룹명 -ServerName 서버명 -Tags @{service_type="live"} -VCore 2 -AsJob 
 
 Get-AzSqlDatabase -ResourceGroupName 리소스그룹명 -ServerName 서버명
 
