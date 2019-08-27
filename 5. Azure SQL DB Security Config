@@ -1,27 +1,25 @@
-# -	Network
-# 	방화벽(https://docs.microsoft.com/ko-kr/azure/sql-database/sql-database-firewall-configure)
-# 1.	서버 레벨 방화벽 정책은 master 데이터베이스에서 수행하며, 해당 SQL Server에 포함된 모든 데이터베이스가 해당 서버 정책을 상속받습니다. 
+# 1.	My Public IP 조회 
+Invoke-WebRequest 'https://api.ipify.org?format=table' | Select-Object Content
 
+
+# 2.	서버 레벨 방화벽 정책은 해당 SQL Server에 포함된 모든 데이터베이스가 해당 서버 정책을 상속받습니다. 
 # Add Server Level Firewall Powershell
+
 New-AzSqlServerFirewallRule -ResourceGroupName 리소스그룹명 -ServerName 서버명 -FirewallRuleName 방화벽규칙명 -StartIpAddress StartIP -EndIpAddress EndIP 
 
 
-# Add Server Level Firewall T-SQL
+# 3.	SSMS를 통한 접속 확인
+https://docs.microsoft.com/ko-kr/azure/sql-database/sql-database-connect-query-ssms
 
-EXECUTE sp_set_firewall_rule N'HYSONG-222.107.244.147','222.107.244.147','222.107.244.147';
 
-SELECT * FROM [sys].[firewall_rules]
-
-# 2.	DB 레벨 방화벽 정책은 각 데이터베이스(master 포함)에서 수행하며, 해당 데이터베이스 접근 제어에 사용됩니다.
+# 4.	DB 레벨 방화벽 정책은 각 데이터베이스(master 포함)에서 수행하며, 해당 데이터베이스 접근 제어에 사용됩니다.
 # Add Database Level Firewall T-SQL
 
 EXECUTE sp_set_database_firewall_rule N'Example DB Setting 1', '10.0.0.4', '10.0.0.4';  
 
 SELECT * FROM sys.database_firewall_rules
 
-# 3.	My Public IP 조회 
 
-Invoke-WebRequest 'https://api.ipify.org?format=table' | Select-Object Content
 
 
 # -	Login 생성 및 권한 관리
