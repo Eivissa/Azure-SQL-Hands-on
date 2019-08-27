@@ -1,18 +1,29 @@
 # 2.	지역 복제 구성 및 장애 조치 테스트
+# 새 서버 SQL 로그인 계정 정보 입력
 $cre = (Get-Credential)
 
 # Add New Secondary Server  
-New-AzSqlServer -ServerName 서버명 -ResourceGroupName 리소스그룹명 -Location 지역 
+# 복제를 위한 새로운 Server 생성
+
+New-AzSqlServer -ServerName 신규서버명 -ResourceGroupName 리소스그룹명 -Location 지역 `
  -SqlAdministratorCredentials $cre 
 
+
 # Add Secondary Database 
+# 기존에 생성되어 있던 원본서버의 데이터베이스를 새로운 서버에 지역 복제 구성
+
 New-AzSqlDatabaseSecondary -ResourceGroupName 원본서버리소스그룹명 -ServerName 원본 서버명 -DatabaseName 데이터베이스명 -PartnerResourceGroupName 대상서버리소스그룹명 -PartnerServerName 대상서버명 -AllowConnections "All" 
 
 
 # Failover Test 
+
 Set-AzSqlDatabaseSecondary -ResourceGroupName 대상서버리소스그룹명 -ServerName 대상서버명 -DatabaseName 데이터베이스명 -PartnerResourceGroupName 원본서버리소스그룹명 -Failover
 
 Get-AzSqlDatabase -ResourceGroupName 리소스그룹명 -ServerName 서버명
+
+
+
+
 
 
 # 3.	Failover Group 테스트
