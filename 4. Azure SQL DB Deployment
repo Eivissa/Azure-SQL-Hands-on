@@ -1,29 +1,33 @@
-# 1.	배포
+# 1.	Azure SQL Database(Single) Server 배포
+
+$ResourceGroupName = "RESOURCE_GROUP_NAME"
+$ServerName = "SERVER_NAME"
+$DatabaseName = "DATABASE_NAME"
+$Location = "LOCATION(예: eastus)"
+$CollationName = "COLLATION_NAME(예: Korean_Wansung_CI_AS)"
 
 $cre = (Get-Credential)
 
 # Add New SQL Server 
-New-AzSqlServer -ServerName 서버명 -ResourceGroupName 리소스그룹명 -Location 지역 -SqlAdministratorCredentials $cre 
+New-AzSqlServer -ServerName $ServerName -ResourceGroupName $ResourceGroupName -Location $Location -SqlAdministratorCredentials $cre 
 
 
+
+# 2.	Database 배포
 # Add New SQL Database 
-New-AzSqlDatabase -DatabaseName 데이터베이스명 -CollationName Collation name(예: Korean_Wansung_CI_AS) `
+# -AsJob 옵션을 통해 배포가 백그라운드로 이루어 집니다. 배포 상태는 아래 배포 정보 조회를 참고하시기 바랍니다.
+Get-AzSqlServer -ResourceGroupName $ResourceGroupName -ServerName $ServerName | `
+New-AzSqlDatabase -DatabaseName $DatabaseName -CollationName $CollationName `
 -ComputeGeneration Gen5 -ComputeModel Provisioned -Edition Standard -LicenseType LicenseIncluded `
--ResourceGroupName 리소스그룹명 -ServerName 서버명 -Tags @{service_type="live"} -VCore 2 -AsJob 
-
-Get-AzSqlDatabase -ResourceGroupName 리소스그룹명 -ServerName 서버명
+-ResourceGroupName $ResourceGroupName -Tags @{service_type="live"} -VCore 2 -AsJob 
 
 
-
-
-# 2.	배포 정보 조회
-Get-Azlog -ResourceGroup 리소스그룹명 -StartTime (Get-Date).AddHours(-1) -EndTime (Get-Date)
-
+# 3.	배포 정보 조회
+# -AsJob 옵션 사용시 명령이 백그라운드로 동작하며 아래 명령을 통해 진행중인 Job을 확인할 수 있습니다.
 Get-job 
 
-Get-job | Wait-Job 
+# Get-job의 Running중인 작업 포그라운드로 전환
+Wait-Job -Id Get-Job 결과의 Id 번호
 
-Receive-Job -Id n 
-
-Wait-Job -Id n
-
+# Activity Log 조회 
+Get-Azlog -ResourceGroup 리소스그룹명 -StartTime (Get-Date).AddHours(-1) -EndTime (Get-Date)
