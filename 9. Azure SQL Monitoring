@@ -7,7 +7,7 @@
 
 # 스토리지 생성에 필요한 변수 항목 입력
 
-$resourceGroupName      = 'YOUR_RESOURCE-GROUP-NAME';
+$resourceGroupName      = 'YOUR_RESOURCE_GROUP_NAME';
 $storageAccountLocation = 'YOUR_STORAGE_ACCOUNT_LOCATION';
 $storageAccountName     = 'YOUR_STORAGE_ACCOUNT_NAME';
 $containerName          = 'YOUR_CONTAINER_NAME';
@@ -48,17 +48,27 @@ $sasTokenWithPolicy = New-AzStorageContainerSASToken -Name $containerName -Conte
 "sasTokenWithPolicy: $sasTokenWithPolicy";
 
 
--- 1.2.3.	확장 이벤트 생성을 위한 Master Key 및 Credential 생성
+
+-- 1.2.3.	실행 결과 확인 및 다음 Credential 생성에 필요한 sasTokenWithPolicy 값 확인
+
+
+
+-- 1.2.4.	확장 이벤트 생성을 위한 Master Key 및 Credential 생성
+-- 주의: sasTokenWithPolicy 입력시 “?”는 제거 
+-- StorageAccountName, ContainerName 수정
+
 -- Test DB로 변경
 
 CREATE MASTER KEY ENCRYPTION BY PASSWORD = '0C34C960-6621-4682-A123-C7EA08E3FC46' -- Or any newid().
 
 CREATE DATABASE SCOPED CREDENTIAL[https://StorageAccountName.blob.core.windows.net/ContainerName]
 WITH IDENTITY = 'SHARED ACCESS SIGNATURE',  
-SECRET = 'sasTokenWithPolicy';
+SECRET = 'sasTokenWithPolicy(예: sv=2018-11-09&sr=c&si=xotoken&sig=eTC2CgUZUTpW5puw5U5CuC3fCaOtxvIG7WUSw7U2a7s%3D)';
 
 
--- 1.2.4.	에러 로그 수집 확장 이벤트 샘플  
+-- 1.2.5.	에러 로그 수집 확장 이벤트 샘플  
+-- StorageAccountName, ContainerName 수정
+
 CREATE EVENT SESSION [XE_ERROR] ON DATABASE 
 ADD EVENT sqlserver.error_reported(
 ACTION(sqlserver.client_app_name,sqlserver.client_hostname,sqlserver.client_pid,sqlserver.database_name,sqlserver.session_id,sqlserver.sql_text,sqlserver.username)
@@ -70,6 +80,7 @@ WITH (MAX_MEMORY=16384 KB,EVENT_RETENTION_MODE=ALLOW_SINGLE_EVENT_LOSS,MAX_DISPA
 ALTER EVENT SESSION XE_ERROR ON DATABASE STATE = START;
 
 
+-- 1.2.6.	조회
 -- Blob Event File load
 
 SELECT *,CAST(event_data AS XML) AS [event_data_XML] 
